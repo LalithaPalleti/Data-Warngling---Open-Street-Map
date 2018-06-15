@@ -1,4 +1,4 @@
-
+from auditStreetNames import *
 import schema
 import re
 import codecs
@@ -61,7 +61,7 @@ class UnicodeDictWriter(csv.DictWriter, object):
             
 
 
-def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIELDS,
+def shape_element(element, file_in, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIELDS,
                   problem_chars=PROBLEMCHARS, default_tag_type='regular'):
    
 
@@ -81,6 +81,8 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
                 colon_type = m.group()
             
             if (child.attrib['k'] in colon_type):
+                if child.attrib['k'] == "addr:street":
+                    child.attrib['v'] = update_name(child.attrib['v'])
                 colon_keys = child.attrib['k'].split(':')
                 tags.append({'id': element.attrib['id'],
                 'key': colon_keys[1],
@@ -89,6 +91,8 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
             
             if (child.attrib['k'] not in colon_type ):
                 if (child.attrib['k'].find(':')!=-1):
+                    if child.attrib['k'] == "addr:street":
+                        child.attrib['v'] = update_name(child.attrib['v'])
                     keys = child.attrib['k'].split(':',1)
                     tags.append({'id': element.attrib['id'],
                                 'key': keys[1],
@@ -107,15 +111,16 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
             index += 1;
            
     if element.tag == 'node':
+        #update_names(element, file_in)
         for field in node_attr_fields:
             node_attribs[field] = element.attrib[field]
         node_result = {}    
         for key,value in node_attribs.items():
             if value not in node_result.values() and value != " ":
                 node_result[key] = value    
-            
         return {'node': node_result, 'node_tags': tags}
     elif element.tag == 'way':
+        #update_names(element, file_in)
         for field in way_attr_fields:
             way_attribs[field] = element.attrib[field]
     
@@ -124,16 +129,14 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
         for key,value in way_attribs.items():
             if value not in way_result.values():
                 way_result[key] = value
-            
         return {'way': way_result, 'way_nodes': way_nodes, 'way_tags': tags}
-#here is the function
 
 def process_map(file_in, validate = True):
           
     with codecs.open(NODES_PATH, 'wb') as nodes_file, \
          codecs.open(NODE_TAGS_PATH, 'wb') as nodes_tags_file, \
-         codecs.open(WAYS_PATH, 'wb') as ways_file, \
-         codecs.open(WAY_NODES_PATH, 'wb') as way_nodes_file, \
+        codecs.open(WAYS_PATH, 'wb') as ways_file,\
+        codecs.open(WAY_NODES_PATH, 'wb') as way_nodes_file,\
          codecs.open(WAY_TAGS_PATH, 'wb') as way_tags_file:
                 nodes_writer = UnicodeDictWriter(nodes_file, NODE_FIELDS)
                 node_tags_writer = UnicodeDictWriter(nodes_tags_file, NODE_TAGS_FIELDS)
@@ -153,7 +156,7 @@ def process_map(file_in, validate = True):
 
                 for element in get_element(file_in, tags=('node', 'way')):
                     #print(element)
-                    el = shape_element(element)
+                    el = shape_element(element, file_in)
                     if el:
                         if validate is True:
                             validate_element(el, validator)
